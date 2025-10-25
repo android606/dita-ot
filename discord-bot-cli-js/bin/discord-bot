@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+
+/**
+ * Discord Bot CLI executable
+ */
+
+require('../src/index.js');
