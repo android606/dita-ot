@@ -1,0 +1,37 @@
+bot:
+  token: "${DISCORD_BOT_TOKEN}"
+  applicationId: "${DISCORD_APPLICATION_ID}"
+  publicKey: "${DISCORD_PUBLIC_KEY}"
+  channelId: null
+  guildId: null
+  prefix: "!"
+  autoReconnect: true
+  maxReconnectAttempts: 5
+  reconnectDelay: 5000
+
+file:
+  enabled: false
+  inputFile: null
+  outputFile: null
+  watchInterval: 1000
+  fileEncoding: "utf8"
+
+socket:
+  enabled: false
+  socketPath: "/tmp/discord-bot.sock"
+  socketMode: "0o600"
+  maxConnections: 10
+
+service:
+  enabled: false
+  scriptDirectory: "./scripts"
+  allowedCommands: ["ls", "ps", "df", "free", "uptime", "whoami", "pwd"]
+  maxExecutionTime: 30000
+  workingDirectory: "."
+
+logging:
+  level: "info"
+  file: null
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  maxFileSize: 10485760
+  backupCount: 5

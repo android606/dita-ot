@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot-cli
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - DISCORD_PREFIX=!
+      - DISCORD_LOG_LEVEL=INFO
+    volumes:
+      # Mount scripts directory for custom scripts
+      - ./scripts:/app/scripts:ro
+      # Mount log directory for persistent logs
+      - ./logs:/var/log
+      # Mount socket directory for IPC
+      - ./sockets:/tmp
+      # Mount configuration directory
+      - ./config:/etc/discord-bot:ro
+    ports:
+      # Expose port for potential web interface
+      - "8080:8080"
+    networks:
+      - discord-bot-network
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a monitoring service
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: discord-bot-monitoring
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - discord-bot-network
+    profiles:
+      - monitoring
+
+  # Optional: Add a log aggregation service
+  loki:
+    image: grafana/loki:latest
+    container_name: discord-bot-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+    networks:
+      - discord-bot-network
+    profiles:
+      - monitoring
+
+  # Optional: Add a visualization service
+  grafana:
+    image: grafana/grafana:latest
+    container_name: discord-bot-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana:/var/lib/grafana
+    networks:
+      - discord-bot-network
+    profiles:
+      - monitoring
+
+networks:
+  discord-bot-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local
+  sockets:
+    driver: local
+  config:
+    driver: local
