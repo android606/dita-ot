@@ -6,7 +6,7 @@ on:
 jobs:
   # Build distribution package and upload S3
   dist:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
           SOURCE_DIR: 'build/distributions'
   # Publish snapshot to Maven
   maven:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

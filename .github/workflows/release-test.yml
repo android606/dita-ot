@@ -6,7 +6,7 @@ on:
       - "hotfix/**"
 jobs:
   distribution:
-    if: ${{ github.repository == 'dita-ot/dita-ot' }}
+    if: ${{ github.repository == 'android/com.lifescan.specialization.dita.v1.3' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

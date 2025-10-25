@@ -10,9 +10,9 @@ permissions:
   packages: write
 
 jobs:
-  # Build distribution package and upload the GitHub releases
+  # Build distribution package and upload the Gitea releases
   dist:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,14 +33,44 @@ jobs:
           ./gradlew dist -Pcommit=${GITHUB_SHA} -Ptag=${TAG} --no-daemon
         env:
           TAG: ${{ env.tag }}
-      - name: Deploy distribution package to releases
-        uses: softprops/action-gh-release@v1
+      - name: Generate Release Notes
+        run: |
+          # Generate changelog from git commits
+          echo "# Release ${{ env.tag }}" > release_notes.md
+          echo "" >> release_notes.md
+          echo "## Changes in this Release" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "This release includes the following changes:" >> release_notes.md
+          echo "" >> release_notes.md
+          
+          # Get commits since last tag (if any)
+          if git describe --tags --abbrev=0 HEAD^ >/dev/null 2>&1; then
+            echo "### Changes since last release:" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> release_notes.md
+          else
+            echo "### Initial release with the following features:" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" --max-count=20 >> release_notes.md
+          fi
+          
+          echo "" >> release_notes.md
+          echo "### Build Information:" >> release_notes.md
+          echo "- Commit: \`${{ github.sha }}\`" >> release_notes.md
+          echo "- Build Number: ${{ github.run_number }}" >> release_notes.md
+          echo "- Built on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> release_notes.md
+          
+      - name: Create Gitea Release
+        uses: gitea-release-action@v1
         with:
+          api_url: https://git.android606.com/api/v1
+          token: ${{ secrets.GITEA_TOKEN }}
+          tag_name: ${{ env.tag }}
+          name: Release ${{ env.tag }}
+          body_path: release_notes.md
           files: |
             build/distributions/*.zip
-  # Build DITA-OT Docker image and deploy to ghcr.io
+  # Build DITA-OT Docker image and deploy to container registry
   docker:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     needs: dist
     runs-on: ubuntu-latest
     steps:
@@ -49,12 +79,12 @@ jobs:
       - name: Set tag name
         run: |
           echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-      - name: Login to Docker Hub
+      - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ditaotbot
-          password: ${{ secrets.PACKAGE_REGISTRY }}
+          username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.CONTAINER_REGISTRY_TOKEN }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -64,11 +94,11 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/dita-ot/dita-ot:${{ env.tag }}
+          tags: ghcr.io/android/com.lifescan.specialization.dita.v1.3:${{ env.tag }}
           build-args: VERSION=${{ env.tag }}
   # Publish release to Maven
   maven:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +125,7 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.GPG_PASSPHRASE }}
           GPG_ASC: ${{ secrets.GPG_ASC }}
   homebrew:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     needs: dist
     runs-on: ubuntu-latest
     steps:
@@ -108,15 +138,15 @@ jobs:
           formula-name: dita-ot
           tag-name: ${{ env.tag }}
           base-branch: master
-          download-url: https://github.com/dita-ot/dita-ot/releases/download/${{ env.tag }}/dita-ot-${{ env.tag }}.zip
+          download-url: https://git.android606.com/android/com.lifescan.specialization.dita.v1.3/releases/download/${{ env.tag }}/dita-ot-${{ env.tag }}.zip
           commit-message: |
             {{formulaName}} {{version}}
 
-            Created via GitHub Action
+            Created via Gitea Action
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_COMMITTER_TOKEN }}
   update-website:
-    if: github.repository == 'dita-ot/dita-ot'
+    if: github.repository == 'android/com.lifescan.specialization.dita.v1.3'
     needs: dist
     runs-on: ubuntu-latest
     steps:
@@ -127,6 +157,6 @@ jobs:
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.REPOSITORY_DISPATCH }}
-          repository: dita-ot/docs
+          repository: android/docs
           event-type: release
           client-payload: '{"dita_ot_version": "${{ env.tag }}", "docs_tag": "${{ env.tag }}"}'
